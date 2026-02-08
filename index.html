@@ -62,10 +62,22 @@
       min-height: 24px;
       font-weight: 700;
       margin-bottom: 8px;
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 8px;
     }
 
-    .feedback.ok { color: var(--ok); }
-    .feedback.bad { color: var(--bad); }
+    .feedback.ok {
+      color: var(--ok);
+      background: rgba(28, 154, 82, 0.12);
+      border: 1px solid rgba(28, 154, 82, 0.24);
+    }
+    .feedback.bad {
+      color: var(--bad);
+      background: rgba(209, 62, 62, 0.1);
+      border: 1px solid rgba(209, 62, 62, 0.2);
+    }
 
     .controls {
       display: flex;
@@ -179,60 +191,94 @@
       .stats { grid-template-columns: repeat(2, minmax(95px, 1fr)); }
     }
 
-    @media (max-width: 932px) and (orientation: landscape) {
+    @media (max-width: 768px) {
       html, body {
-        min-height: 100svh;
+        min-height: 100vh;
         min-height: 100dvh;
       }
+
       body {
-        padding-top: calc(8px + var(--safe-top));
-        padding-bottom: calc(8px + var(--safe-bottom));
+        padding-top: calc(12px + var(--safe-top));
+        padding-bottom: calc(12px + var(--safe-bottom));
       }
+
       .app {
+        min-height: calc(100vh - (24px + var(--safe-top) + var(--safe-bottom)));
+        min-height: calc(100dvh - (24px + var(--safe-top) + var(--safe-bottom)));
+        display: flex;
+        flex-direction: column;
         gap: 8px;
         padding: 8px;
       }
-      .top {
+
+      .top, .log {
+        flex: 0 0 auto;
         padding: 8px;
       }
+
       .question {
-        font-size: clamp(18px, 2.7vw, 24px);
+        font-size: clamp(18px, 4vw, 24px);
         margin-bottom: 6px;
       }
+
       .controls {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 6px 8px;
         margin-bottom: 8px;
         font-size: 13px;
         align-items: center;
       }
+
       .controls label { font-size: 12px; }
+
       button {
         padding: 6px 9px;
         font-size: 12px;
       }
+
       .stats {
-        grid-template-columns: repeat(4, minmax(70px, 1fr));
+        grid-template-columns: repeat(4, minmax(68px, 1fr));
         gap: 6px;
       }
+
       .stat { padding: 6px; }
       .k { font-size: 11px; }
       .v { font-size: 18px; }
+
       .boardWrap {
+        flex: 1 1 auto;
+        min-height: 320px;
+        max-height: 75dvh;
         padding: 8px;
         overflow: hidden;
+        display: flex;
       }
+
+      .fretboard-viewport {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+      }
+
       #fretboard {
         width: 100% !important;
-        height: auto;
+        height: 100% !important;
       }
-      .log {
-        padding: 8px;
-      }
+
       .log h3 { margin-bottom: 6px; font-size: 14px; }
       table { font-size: 11px; }
       th, td { padding: 5px; }
+    }
+
+    @media (max-width: 768px) and (orientation: landscape) {
+      .controls {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .boardWrap {
+        min-height: clamp(260px, 68dvh, 75dvh);
+      }
     }
   </style>
 </head>
@@ -256,6 +302,7 @@
         <label><input type="checkbox" id="autoNext" checked /> 자동 다음문제</label>
         <label><input type="checkbox" id="showNames" /> 음이름 항상 표시</label>
         <label><input type="checkbox" id="clickPopup" /> 클릭 시 0.7초 음이름 팝업</label>
+        <label><input type="checkbox" id="showCorrectLocation" checked /> 정답 시 위치 표시</label>
       </div>
 
       <div class="stats">
@@ -317,7 +364,8 @@
       options: {
         autoNext: true,
         showNames: false,
-        clickPopup: false
+        clickPopup: false,
+        showCorrectLocation: true
       }
     };
 
@@ -330,6 +378,7 @@
       autoNext: document.getElementById("autoNext"),
       showNames: document.getElementById("showNames"),
       clickPopup: document.getElementById("clickPopup"),
+      showCorrectLocation: document.getElementById("showCorrectLocation"),
       sCorrect: document.getElementById("sCorrect"),
       sTotal: document.getElementById("sTotal"),
       sAcc: document.getElementById("sAcc"),
@@ -403,12 +452,21 @@
       const ok = clickedNote === target;
 
       state.selected = { stringIdx, fret };
-      state.correctPoint = ok ? { stringIdx, fret } : null;
+      state.correctPoint = (ok && state.options.showCorrectLocation) ? { stringIdx, fret } : null;
       state.wrongPoint = ok ? null : { stringIdx, fret };
       updateStats(ok);
 
       if (ok) {
-        setFeedback("정답!", "ok");
+        if (state.options.showCorrectLocation) {
+          setFeedback(`정답! (${string.label} ${fret}프렛)`, "ok");
+        } else {
+          setFeedback("정답!", "ok");
+        }
+        setTimeout(() => {
+          state.correctPoint = null;
+          if (el.feedbackText.classList.contains("ok")) setFeedback("", "");
+          renderBoard();
+        }, 800);
       } else {
         setFeedback(`오답. ${target} 위치를 확인하세요.`, "bad");
         startHintBlink(target, 1200);
@@ -432,7 +490,7 @@
       render();
 
       if (ok && state.options.autoNext) {
-        setTimeout(() => nextTarget(), 400);
+        setTimeout(() => nextTarget(), 820);
       }
     }
 
@@ -758,6 +816,10 @@
 
     el.clickPopup.addEventListener("change", (e) => {
       state.options.clickPopup = e.target.checked;
+    });
+
+    el.showCorrectLocation.addEventListener("change", (e) => {
+      state.options.showCorrectLocation = e.target.checked;
     });
 
     window.addEventListener("resize", applyLandscapeMobileScale);
