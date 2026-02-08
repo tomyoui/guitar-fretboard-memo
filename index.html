@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>기타 지판 계이름/음이름 암기 (6·5번줄)</title>
+  <style>
+    :root {
+      --bg: #f3e9d9;
+      --wood1: #ddb987;
+      --wood2: #be884f;
+      --boardEdge: #8e6235;
+      --text: #24190e;
+      --line: #f1e2cb;
+      --fret: #f6ead7;
+      --nut: #3e2c1c;
+      --ok: #1c9a52;
+      --bad: #d13e3e;
+      --hint: #2975df;
+      --dot: #fffdf9;
+      --select: #f4c63d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .top {
+      background: #fffaf2;
+      border: 1px solid #e2d2ba;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .question {
+      font-size: clamp(24px, 3vw, 38px);
+      font-weight: 800;
+      margin: 0 0 8px;
+      line-height: 1.2;
+    }
+
+    .feedback {
+      min-height: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .feedback.ok { color: var(--ok); }
+    .feedback.bad { color: var(--bad); }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      border: 1px solid #d3b78f;
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    label { display: inline-flex; align-items: center; gap: 6px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(95px, 1fr));
+      gap: 8px;
+    }
+
+    .stat {
+      border: 1px solid #e2d2ba;
+      border-radius: 10px;
+      background: #fff;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .k {
+      font-size: 12px;
+      color: #6f5a3f;
+    }
+
+    .v {
+      font-size: 22px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+
+    .boardWrap {
+      background: linear-gradient(180deg, var(--wood1), var(--wood2));
+      border: 2px solid var(--boardEdge);
+      border-radius: 12px;
+      padding: 10px;
+      overflow-x: auto;
+      box-shadow: inset 0 0 0 2px rgba(255, 250, 239, 0.22);
+    }
+
+    .log {
+      background: #fffaf2;
+      border: 1px solid #e2d2ba;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .log h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      border-bottom: 1px solid #efe3d1;
+      text-align: left;
+      padding: 7px;
+      white-space: nowrap;
+    }
+
+    .okTag { color: var(--ok); font-weight: 800; }
+    .badTag { color: var(--bad); font-weight: 800; }
+
+    .node-group .node-dot {
+      transform-box: fill-box;
+      transform-origin: center;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    .node-group:hover .node-dot {
+      transform: scale(1.12);
+      filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.25));
+    }
+
+    @media (max-width: 860px) {
+      .stats { grid-template-columns: repeat(2, minmax(95px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <!-- 사용법 1: 파일을 더블클릭하면 브라우저에서 바로 실행됩니다. -->
+  <!-- 사용법 2: 문제 문구의 목표음을 보고 5번줄(위) 또는 6번줄(아래)의 위치를 클릭하세요. -->
+  <!-- 사용법 3: 출제는 C→G→D→A→E→B→Gb→Db→Ab→Eb→Bb→F 순환으로 진행됩니다. -->
+  <!-- 사용법 4: 정답이면 초록, 오답이면 빨강으로 표시되고 오답 시 정답 위치 힌트가 나타납니다. -->
+  <!-- 사용법 5: 음이름 항상 표시/클릭 팝업/자동 다음문제를 체크해 학습 방식을 조절하세요. -->
+  <!-- 사용법 6: 하단 최근 20회 로그에서 목표음/클릭 위치/정오답을 확인하세요. -->
+
+  <div class="app">
+    <section class="top">
+      <h1 class="question" id="questionText"></h1>
+      <div class="feedback" id="feedbackText"></div>
+
+      <div class="controls">
+        <button id="backBtn">이전(Back)</button>
+        <button id="nextBtn">다음(Next)</button>
+        <button id="resetBtn">다시 시작(Reset)</button>
+        <label><input type="checkbox" id="autoNext" checked /> 자동 다음문제</label>
+        <label><input type="checkbox" id="showNames" /> 음이름 항상 표시</label>
+        <label><input type="checkbox" id="clickPopup" /> 클릭 시 0.7초 음이름 팝업</label>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="k">맞춤</div><div class="v" id="sCorrect">0</div></div>
+        <div class="stat"><div class="k">총문항</div><div class="v" id="sTotal">0</div></div>
+        <div class="stat"><div class="k">정답률</div><div class="v" id="sAcc">0%</div></div>
+        <div class="stat"><div class="k">연속정답</div><div class="v" id="sStreak">0</div></div>
+      </div>
+    </section>
+
+    <section class="boardWrap">
+      <svg id="fretboard" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="5번줄과 6번줄 기타 지판"></svg>
+    </section>
+
+    <section class="log">
+      <h3>최근 20회 로그</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>목표음</th>
+            <th>클릭 위치</th>
+            <th>클릭 음</th>
+            <th>결과</th>
+          </tr>
+        </thead>
+        <tbody id="logBody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    // ===== Data =====
+    const NOTES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+    const FIFTHS_ORDER = ["C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F"];
+
+    // 화면 배치/로그/판정 기준: 위쪽 5번줄(A), 아래쪽 6번줄(E)
+    const STRINGS = [
+      { key: 0, label: "5번줄(A)", open: "A", thickness: 3.6 },
+      { key: 1, label: "6번줄(E)", open: "E", thickness: 4.9 }
+    ];
+
+    const FRET_MIN = 0;
+    const FRET_MAX = 12;
+    const INLAY_FRETS = [3, 5, 7, 9, 12];
+
+    const state = {
+      targetIdx: 0,
+      stats: { correct: 0, total: 0, streak: 0 },
+      logs: [],
+      selected: null,
+      correctPoint: null,
+      wrongPoint: null,
+      hintNote: null,
+      hintVisible: false,
+      popup: null,
+      options: {
+        autoNext: true,
+        showNames: false,
+        clickPopup: false
+      }
+    };
+
+    const el = {
+      questionText: document.getElementById("questionText"),
+      feedbackText: document.getElementById("feedbackText"),
+      backBtn: document.getElementById("backBtn"),
+      nextBtn: document.getElementById("nextBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      autoNext: document.getElementById("autoNext"),
+      showNames: document.getElementById("showNames"),
+      clickPopup: document.getElementById("clickPopup"),
+      sCorrect: document.getElementById("sCorrect"),
+      sTotal: document.getElementById("sTotal"),
+      sAcc: document.getElementById("sAcc"),
+      sStreak: document.getElementById("sStreak"),
+      fretboard: document.getElementById("fretboard"),
+      logBody: document.getElementById("logBody")
+    };
+
+    // ===== Utils =====
+    function noteToIndex(note) {
+      return NOTES.indexOf(note);
+    }
+
+    function noteAt(openNote, fret) {
+      const idx = (noteToIndex(openNote) + fret) % 12;
+      return NOTES[idx];
+    }
+
+    function currentTarget() {
+      return FIFTHS_ORDER[state.targetIdx];
+    }
+
+    function nextTarget() {
+      state.targetIdx = (state.targetIdx + 1) % FIFTHS_ORDER.length;
+      clearSelectionVisuals();
+      render();
+    }
+
+    function prevTarget() {
+      state.targetIdx = (state.targetIdx - 1 + FIFTHS_ORDER.length) % FIFTHS_ORDER.length;
+      clearSelectionVisuals();
+      render();
+    }
+
+    function clearSelectionVisuals() {
+      state.selected = null;
+      state.correctPoint = null;
+      state.wrongPoint = null;
+      state.hintNote = null;
+      state.hintVisible = false;
+      state.popup = null;
+      setFeedback("", "");
+    }
+
+    function setFeedback(text, type) {
+      el.feedbackText.textContent = text;
+      el.feedbackText.className = "feedback" + (type ? " " + type : "");
+    }
+
+    function pushLog(row) {
+      state.logs.unshift(row);
+      if (state.logs.length > 20) state.logs.length = 20;
+    }
+
+    function updateStats(ok) {
+      state.stats.total += 1;
+      if (ok) {
+        state.stats.correct += 1;
+        state.stats.streak += 1;
+      } else {
+        state.stats.streak = 0;
+      }
+    }
+
+    // ===== Game =====
+    function submitPoint(stringIdx, fret) {
+      const string = STRINGS[stringIdx];
+      const clickedNote = noteAt(string.open, fret);
+      const target = currentTarget();
+      const ok = clickedNote === target;
+
+      state.selected = { stringIdx, fret };
+      state.correctPoint = ok ? { stringIdx, fret } : null;
+      state.wrongPoint = ok ? null : { stringIdx, fret };
+      updateStats(ok);
+
+      if (ok) {
+        setFeedback("정답!", "ok");
+      } else {
+        setFeedback(`오답. ${target} 위치를 확인하세요.`, "bad");
+        startHintBlink(target, 1200);
+      }
+
+      if (state.options.clickPopup) {
+        state.popup = { stringIdx, fret, text: clickedNote };
+        setTimeout(() => {
+          state.popup = null;
+          renderBoard();
+        }, 700);
+      }
+
+      pushLog({
+        target,
+        clickPos: `${string.label} ${fret}프렛`,
+        clickedNote,
+        ok
+      });
+
+      render();
+
+      if (ok && state.options.autoNext) {
+        setTimeout(() => nextTarget(), 400);
+      }
+    }
+
+    function startHintBlink(note, durationMs) {
+      state.hintNote = note;
+      state.hintVisible = true;
+      const start = performance.now();
+
+      const timer = setInterval(() => {
+        const elapsed = performance.now() - start;
+        if (elapsed >= durationMs) {
+          clearInterval(timer);
+          state.hintVisible = true;
+          renderBoard();
+          return;
+        }
+        state.hintVisible = !state.hintVisible;
+        renderBoard();
+      }, 140);
+    }
+
+    function resetAll() {
+      state.targetIdx = 0;
+      state.stats = { correct: 0, total: 0, streak: 0 };
+      state.logs = [];
+      clearSelectionVisuals();
+      render();
+    }
+
+    // ===== Render =====
+    function renderQuestion() {
+      el.questionText.textContent = `지판에서 ${currentTarget()}을(를) 찾아 클릭하세요`;
+    }
+
+    function renderStats() {
+      const { correct, total, streak } = state.stats;
+      const acc = total === 0 ? 0 : Math.round((correct / total) * 100);
+      el.sCorrect.textContent = String(correct);
+      el.sTotal.textContent = String(total);
+      el.sAcc.textContent = `${acc}%`;
+      el.sStreak.textContent = String(streak);
+    }
+
+    function renderLogs() {
+      el.logBody.innerHTML = "";
+      state.logs.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${state.logs.length - i}</td>
+          <td>${row.target}</td>
+          <td>${row.clickPos}</td>
+          <td>${row.clickedNote}</td>
+          <td class="${row.ok ? "okTag" : "badTag"}">${row.ok ? "정답" : "오답"}</td>
+        `;
+        el.logBody.appendChild(tr);
+      });
+    }
+
+    function pointStyle(stringIdx, fret, note) {
+      let fill = getCss("--dot");
+      let stroke = "#5b452c";
+      let strokeWidth = 1.4;
+      let hintGlow = false;
+
+      if (state.hintNote === note && state.hintVisible) {
+        stroke = getCss("--hint");
+        strokeWidth = 2.8;
+        hintGlow = true;
+      }
+
+      if (state.correctPoint && state.correctPoint.stringIdx === stringIdx && state.correctPoint.fret === fret) {
+        fill = getCss("--ok");
+        stroke = "#166b3d";
+        strokeWidth = 2.6;
+      }
+
+      if (state.wrongPoint && state.wrongPoint.stringIdx === stringIdx && state.wrongPoint.fret === fret) {
+        fill = getCss("--bad");
+        stroke = "#8f2020";
+        strokeWidth = 2.6;
+      }
+
+      return { fill, stroke, strokeWidth, hintGlow };
+    }
+
+    function drawInlays(xStart, fretGap, yTop, yBottom) {
+      INLAY_FRETS.forEach((fret) => {
+        const cx = xStart + (fret - 0.5) * fretGap;
+        if (fret === 12) {
+          [yTop + 30, yBottom - 30].forEach((cy) => {
+            el.fretboard.appendChild(createSvg("circle", {
+              cx, cy, r: 8,
+              fill: "rgba(250,239,219,0.92)",
+              stroke: "#8b6b43",
+              "stroke-width": 1
+            }));
+          });
+        } else {
+          el.fretboard.appendChild(createSvg("circle", {
+            cx,
+            cy: (yTop + yBottom) / 2,
+            r: 8,
+            fill: "rgba(250,239,219,0.92)",
+            stroke: "#8b6b43",
+            "stroke-width": 1
+          }));
+        }
+      });
+    }
+
+    function renderBoard() {
+      const xNut = 70;
+      const xStart = 98;
+      const fretGap = 78;
+      const yRows = [82, 192]; // 위: 5번줄(A), 아래: 6번줄(E)
+      const yTop = 44;
+      const yBottom = 230;
+      const width = xStart + fretGap * FRET_MAX + 96;
+      const height = 280;
+
+      el.fretboard.setAttribute("width", String(width));
+      el.fretboard.setAttribute("height", String(height));
+      el.fretboard.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      el.fretboard.innerHTML = "";
+
+      el.fretboard.appendChild(createSvg("rect", {
+        x: 0,
+        y: 0,
+        width,
+        height,
+        fill: "rgba(0,0,0,0.06)"
+      }));
+
+      // 너트: 0프렛 왼쪽을 굵고 진하게
+      el.fretboard.appendChild(createSvg("line", {
+        x1: xNut,
+        y1: yTop,
+        x2: xNut,
+        y2: yBottom,
+        stroke: getCss("--nut"),
+        "stroke-width": 13,
+        "stroke-linecap": "round"
+      }));
+
+      // 프렛 세로선 (12프렛 강조)
+      for (let f = FRET_MIN; f <= FRET_MAX; f++) {
+        const x = xStart + f * fretGap;
+        const is12 = f === 12;
+        el.fretboard.appendChild(createSvg("line", {
+          x1: x,
+          y1: yTop,
+          x2: x,
+          y2: yBottom,
+          stroke: is12 ? "#fff2df" : getCss("--fret"),
+          "stroke-width": is12 ? 5 : 2.4
+        }));
+
+        el.fretboard.appendChild(createSvg("text", {
+          x,
+          y: 258,
+          "font-size": 16,
+          "font-weight": 800,
+          "text-anchor": "middle",
+          fill: "#2d2114"
+        }, String(f)));
+      }
+
+      drawInlays(xStart, fretGap, yTop, yBottom);
+
+      STRINGS.forEach((s, sIdx) => {
+        const y = yRows[sIdx];
+
+        el.fretboard.appendChild(createSvg("line", {
+          x1: xNut,
+          y1: y,
+          x2: xStart + fretGap * FRET_MAX,
+          y2: y,
+          stroke: "#f8f2e8",
+          "stroke-width": s.thickness,
+          "stroke-linecap": "round"
+        }));
+
+        el.fretboard.appendChild(createSvg("text", {
+          x: 8,
+          y: y + 6,
+          "font-size": 16,
+          "font-weight": 800,
+          fill: "#2d2114"
+        }, s.label));
+
+        for (let fret = FRET_MIN; fret <= FRET_MAX; fret++) {
+          const x = xStart + fret * fretGap;
+          const note = noteAt(s.open, fret);
+          const style = pointStyle(sIdx, fret, note);
+          const selected = state.selected && state.selected.stringIdx === sIdx && state.selected.fret === fret;
+
+          const group = createSvg("g", { class: "node-group" });
+
+          if (selected) {
+            group.appendChild(createSvg("circle", {
+              cx: x,
+              cy: y,
+              r: 13.5,
+              fill: "none",
+              stroke: getCss("--select"),
+              "stroke-width": 3.2,
+              style: "pointer-events:none"
+            }));
+          }
+
+          if (style.hintGlow) {
+            group.appendChild(createSvg("circle", {
+              cx: x,
+              cy: y,
+              r: 14,
+              fill: "none",
+              stroke: getCss("--hint"),
+              "stroke-width": 2.8,
+              opacity: 0.9,
+              style: "pointer-events:none"
+            }));
+          }
+
+          const hit = createSvg("circle", {
+            cx: x,
+            cy: y,
+            r: 15,
+            fill: "transparent",
+            style: "cursor:pointer"
+          });
+          hit.addEventListener("click", () => submitPoint(sIdx, fret));
+          group.appendChild(hit);
+
+          group.appendChild(createSvg("circle", {
+            cx: x,
+            cy: y,
+            r: 10,
+            fill: style.fill,
+            stroke: style.stroke,
+            "stroke-width": style.strokeWidth,
+            class: "node-dot",
+            style: "pointer-events:none"
+          }));
+
+          if (state.options.showNames) {
+            group.appendChild(createSvg("text", {
+              x,
+              y: y + 4,
+              "font-size": 10,
+              "font-weight": 800,
+              "text-anchor": "middle",
+              fill: "#1f1408",
+              style: "pointer-events:none"
+            }, note));
+          }
+
+          el.fretboard.appendChild(group);
+        }
+      });
+
+      if (state.popup) {
+        const y = yRows[state.popup.stringIdx] - 24;
+        const x = xStart + state.popup.fret * fretGap;
+        el.fretboard.appendChild(createSvg("text", {
+          x,
+          y,
+          "font-size": 16,
+          "font-weight": 900,
+          "text-anchor": "middle",
+          fill: "#113f85"
+        }, state.popup.text));
+      }
+    }
+
+    function createSvg(tag, attrs, text = "") {
+      const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, String(v)));
+      if (text) node.textContent = text;
+      return node;
+    }
+
+    function getCss(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function render() {
+      renderQuestion();
+      renderStats();
+      renderLogs();
+      renderBoard();
+    }
+
+    // ===== Events =====
+    el.backBtn.addEventListener("click", prevTarget);
+    el.nextBtn.addEventListener("click", nextTarget);
+    el.resetBtn.addEventListener("click", resetAll);
+
+    el.autoNext.addEventListener("change", (e) => {
+      state.options.autoNext = e.target.checked;
+    });
+
+    el.showNames.addEventListener("change", (e) => {
+      state.options.showNames = e.target.checked;
+      renderBoard();
+    });
+
+    el.clickPopup.addEventListener("change", (e) => {
+      state.options.clickPopup = e.target.checked;
+    });
+
+    render();
+  </script>
+
+  <!-- 테스트 체크리스트 1: 위쪽 줄 클릭 시 로그가 5번줄(A) n프렛으로 기록되는지 -->
+  <!-- 테스트 체크리스트 2: 아래쪽 줄 클릭 시 로그가 6번줄(E) n프렛으로 기록되는지 -->
+  <!-- 테스트 체크리스트 3: 12프렛 선이 다른 프렛보다 더 굵게 보이는지 -->
+  <!-- 테스트 체크리스트 4: 인레이 3/5/7/9 단일, 12 이중 마커가 정상 위치에 보이는지 -->
+  <!-- 테스트 체크리스트 5: 정답/오답/선택/힌트 색상 구분이 확실한지 -->
+  <!-- 테스트 체크리스트 6: 모바일에서도 점 클릭이 쉬운지(터치 영역 30px 유지) -->
+</body>
+</html>
