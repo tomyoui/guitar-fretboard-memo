@@ -117,6 +117,16 @@
       box-shadow: inset 0 0 0 2px rgba(255, 250, 239, 0.22);
     }
 
+    .fretboard-viewport {
+      position: relative;
+      width: 100%;
+    }
+
+    #fretboard {
+      display: block;
+      transform-origin: left top;
+    }
+
     .log {
       background: #fffaf2;
       border: 1px solid #e2d2ba;
@@ -162,6 +172,35 @@
     @media (max-width: 860px) {
       .stats { grid-template-columns: repeat(2, minmax(95px, 1fr)); }
     }
+
+    @media (max-width: 932px) and (orientation: landscape) {
+      .app {
+        gap: 8px;
+        padding: 10px;
+      }
+      .top {
+        padding: 8px;
+      }
+      .question {
+        font-size: clamp(18px, 2.7vw, 24px);
+        margin-bottom: 6px;
+      }
+      .controls {
+        gap: 6px 10px;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+      button {
+        padding: 6px 9px;
+      }
+      .boardWrap {
+        padding: 8px;
+        overflow: hidden;
+      }
+      .log {
+        padding: 8px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -195,7 +234,9 @@
     </section>
 
     <section class="boardWrap">
-      <svg id="fretboard" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="5번줄과 6번줄 기타 지판"></svg>
+      <div class="fretboard-viewport" id="fretboardViewport">
+        <svg id="fretboard" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="5번줄과 6번줄 기타 지판"></svg>
+      </div>
     </section>
 
     <section class="log">
@@ -260,6 +301,7 @@
       sTotal: document.getElementById("sTotal"),
       sAcc: document.getElementById("sAcc"),
       sStreak: document.getElementById("sStreak"),
+      fretboardViewport: document.getElementById("fretboardViewport"),
       fretboard: document.getElementById("fretboard"),
       logBody: document.getElementById("logBody")
     };
@@ -632,6 +674,22 @@
       }
     }
 
+    function applyLandscapeMobileScale() {
+      const viewport = el.fretboardViewport;
+      const board = el.fretboard;
+      if (!viewport || !board) return;
+
+      const isLandscapeMobile = window.matchMedia("(max-width: 932px) and (orientation: landscape)").matches;
+      const boardWidth = Number(board.getAttribute("width")) || board.viewBox.baseVal.width || 1;
+      const boardHeight = Number(board.getAttribute("height")) || board.viewBox.baseVal.height || 1;
+      const viewportWidth = viewport.clientWidth || boardWidth;
+
+      const scale = isLandscapeMobile ? Math.min(1, viewportWidth / boardWidth) : 1;
+      board._scale = scale;
+      board.style.transform = `scale(${scale})`;
+      viewport.style.height = `${boardHeight * scale}px`;
+    }
+
     function createSvg(tag, attrs, text = "") {
       const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
       Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, String(v)));
@@ -648,6 +706,7 @@
       renderStats();
       renderLogs();
       renderBoard();
+      applyLandscapeMobileScale();
     }
 
     // ===== Events =====
@@ -667,6 +726,10 @@
     el.clickPopup.addEventListener("change", (e) => {
       state.options.clickPopup = e.target.checked;
     });
+
+    window.addEventListener("resize", applyLandscapeMobileScale);
+    window.addEventListener("orientationchange", applyLandscapeMobileScale);
+    document.addEventListener("DOMContentLoaded", applyLandscapeMobileScale);
 
     render();
   </script>
